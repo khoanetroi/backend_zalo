@@ -61,23 +61,23 @@ app.get('/api/events/:eventId', (req, res) => {
 });
 
 
-// api lấy giá vé
+// API lấy danh sách vé theo eventId
 app.get('/api/tickets', (req, res) => {
-  const eventId = req.query.eventId; // Lấy eventId từ query param
+  const { eventId } = req.query;
   if (!eventId) {
-      return res.status(400).json({ error: 'eventId là bắt buộc.' });
+    return res.status(400).json({ error: '400' });
   }
-  db.query('SELECT ticket_id, price_vnd, ticket_type FROM tickets WHERE event_id = ?', [eventId], (err, results) => {
-      if (err) {
-          console.error("DB Error:", err);
-          return res.status(500).json({ error: 'Lỗi truy vấn cơ sở dữ liệu.' });
-      }
-      if (results.length === 0) {
-          return res.status(200).json({ message: 'Không tìm thấy vé cho sự kiện này.', data: [] }); // trả về luôn [] chứ không phải null
-      }
-      res.status(200).json({ data: results });
+
+  db.query('SELECT ticket_id, event_id, price_vnd, quantity FROM tickets WHERE event_id = ?', [eventId], (err, results) => {
+    if (err) {
+      console.error('Lỗi truy vấn tickets:', err);
+      return res.status(500).json({ error: 'Lỗi server khi truy vấn tickets' });
+    }
+    res.json(results);
   });
 });
+
+
 
 
 // json api event ở đây: http://localhost:3001/api/events
