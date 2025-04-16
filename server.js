@@ -24,7 +24,7 @@ db.connect(err => {
 });
 
 
-// api để get thông tin từ bảng events
+// api để get thông tin từ bảng events - cho ra event nào sắp diễn ra
 app.get('/api/events', (req, res) => {
   db.query('SELECT * FROM events ORDER BY event_date ASC', (err, results) => {
     if (err) {
@@ -35,6 +35,22 @@ app.get('/api/events', (req, res) => {
     }
   });
 });
+
+
+// api lấy danh sách hot event
+app.get('/api/hot-events', (req, res) => {
+  db.query('SELECT * FROM events ORDER BY hot_level desc', (err, results) => {
+    if (err) {
+      console.error('Lỗi truy vấn:', err);
+      res.status(500).json({ error: 'Lỗi server' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
+
 
 
 app.listen(port, () => {
@@ -86,7 +102,6 @@ app.post("/api/bookings", (req, res) => {
   }
   const booking_id = `booking_${Date.now()}`;
 
-  // Chèn vào bảng bookings
   db.query(
     "INSERT INTO bookings (booking_id, ticket_id, booking_date, quantity) VALUES (?, ?, ?, ?)",
     [booking_id, ticket_id, booking_date, quantity],
