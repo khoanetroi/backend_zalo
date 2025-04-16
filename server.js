@@ -125,4 +125,4 @@ app.get("/api/bookings", (req, res) => {
 
 
 
-// json api event ở đây: http://localhost:3001/api/events
+// json api event: http://localhost:3001/api/events
