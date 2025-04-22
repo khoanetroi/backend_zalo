@@ -58,7 +58,7 @@ app.listen(port, () => {
 });
 
 
-// api để lấy thông tin khi nhấp vào event ở trang chủ
+// api để get thông tin khi nhấp vào event ở trang chủ
 app.get('/api/events/:eventId', (req, res) => {
   const eventId = req.params.eventId;
   db.query('SELECT * FROM events WHERE event_id = ?', [eventId], (err, results) => {
@@ -78,22 +78,35 @@ app.get('/api/events/:eventId', (req, res) => {
 
 // api lấy danh sách vé theo eventId
 app.get('/api/tickets', (req, res) => {
-  const { eventId } = req.query;
+  const eventId = req.query.eventId;
+
   if (!eventId) {
-    return res.status(400).json({ error: '400' });
+    return res.status(400).json({ error: "Thiếu eventId" });
   }
 
-  db.query('SELECT ticket_id, event_id, price_vnd, quantity FROM tickets WHERE event_id = ?', [eventId], (err, results) => {
+  const sql = `
+    SELECT 
+      t.*, 
+      (t.quantity - IFNULL(SUM(b.quantity), 0)) AS remaining_quantity
+    FROM tickets t
+    LEFT JOIN bookings b ON t.ticket_id = b.ticket_id
+    WHERE t.event_id = ?
+    GROUP BY t.ticket_id
+  `;
+
+  db.query(sql, [eventId], (err, results) => {
     if (err) {
-      console.error('Lỗi truy vấn', err);
-      return res.status(500).json({ error: 'Lỗi server' });
+      console.error("Lỗi khi lấy vé:", err);
+      return res.status(500).json({ error: "Lỗi máy chủ" });
     }
+
     res.json(results);
   });
 });
 
 
-// api tạo booking mới (không cần user)
+
+// api tạo booking mới
 app.post("/api/bookings", (req, res) => {
 
   const { ticket_id, quantity, booking_date } = req.body;
@@ -115,7 +128,7 @@ app.post("/api/bookings", (req, res) => {
   );
 });
 
-// API lấy tất cả vé đã đặt
+// apiW lấy tất cả vé đã đặt
 app.get("/api/bookings", (req, res) => {
   db.query(
     `SELECT b.booking_id, b.quantity, b.booking_date, e.event_name, e.event_date, e.event_location
@@ -140,4 +153,4 @@ app.get("/api/bookings", (req, res) => {
 
 
 
-// json api event: http://localhost:3001/api/events
+// json api event: http://localhost:3001/api/events - muon tim api nao thi doi duoi
