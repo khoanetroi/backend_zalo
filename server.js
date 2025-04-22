@@ -108,16 +108,17 @@ app.get('/api/tickets', (req, res) => {
 
 // api tạo booking mới
 app.post("/api/bookings", (req, res) => {
-
   const { ticket_id, quantity, booking_date } = req.body;
   if (!ticket_id || !quantity || !booking_date) {
     return res.status(400).json({ error: "Thiếu thông tin đặt vé" });
   }
+
   const booking_id = `booking_${Date.now()}`;
+  const status = 'confirmed'; 
 
   db.query(
-    "INSERT INTO bookings (booking_id, ticket_id, booking_date, quantity) VALUES (?, ?, ?, ?)",
-    [booking_id, ticket_id, booking_date, quantity],
+    "INSERT INTO bookings (booking_id, ticket_id, booking_date, quantity, status) VALUES (?, ?, ?, ?, ?)",
+    [booking_id, ticket_id, booking_date, quantity, status],
     (err) => {
       if (err) {
         console.error("Lỗi khi thêm booking:", err);
@@ -128,20 +129,66 @@ app.post("/api/bookings", (req, res) => {
   );
 });
 
-// apiW lấy tất cả vé đã đặt
+
+// api lấy tất cả vé đã đặt
 app.get("/api/bookings", (req, res) => {
+  const sql = `
+    SELECT 
+      b.booking_id, 
+      b.quantity, 
+      b.booking_date, 
+      b.status,
+      e.event_name, 
+      e.event_date, 
+      e.event_location
+    FROM bookings b
+    JOIN tickets t ON b.ticket_id = t.ticket_id
+    JOIN events e ON t.event_id = e.event_id
+    ORDER BY b.booking_date DESC
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("[API /api/bookings] Lỗi truy vấn:", err.message);
+      return res.status(500).json({ error: "Không thể lấy danh sách vé" });
+    }
+
+    res.status(200).json(results);
+  });
+});
+
+
+
+// api hủy vé
+app.post('/api/bookings/:bookingId/cancel', (req, res) => {
+  const bookingId = req.params.bookingId;
+
   db.query(
-    `SELECT b.booking_id, b.quantity, b.booking_date, e.event_name, e.event_date, e.event_location
-     FROM bookings b
-     JOIN tickets t ON b.ticket_id = t.ticket_id
-     JOIN events e ON t.event_id = e.event_id
-     ORDER BY b.booking_date DESC`,
-    (err, results) => {
+    "UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?",
+    [bookingId],
+    (err, result) => {
       if (err) {
-        console.error("Lỗi khi lấy danh sách vé:", err);
+        console.error("Lỗi khi hủy vé:", err);
         return res.status(500).json({ error: "Lỗi server" });
       }
-      return res.json(results);
+      return res.json({ message: "Hủy vé thành công" });
+    }
+  );
+});
+
+
+// Cập nhật trạng thái hủy vé
+app.put("/api/bookings/cancel/:bookingId", (req, res) => {
+  const { bookingId } = req.params;
+  db.query(
+    "UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?",
+    [bookingId],
+    (err) => {
+      if (err) {
+        console.error("Lỗi khi hủy vé:", err);
+        return res.status(500).json({ error: "Lỗi server" });
+      }
+      res.json({ message: "Đã hủy vé thành công" });
     }
   );
 });
