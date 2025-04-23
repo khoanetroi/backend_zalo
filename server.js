@@ -195,6 +195,70 @@ app.put("/api/bookings/cancel/:bookingId", (req, res) => {
 
 
 
+// api tạo sự kiện mới
+app.post("/api/events", (req, res) => {
+  const {
+    event_id,
+    event_name,
+    event_date,
+    event_time,
+    event_location,
+    event_description,
+    banner_url,
+    hot_level,
+    tickets // thêm từ client gửi lên
+  } = req.body;
+
+  if (!event_id || !event_name || !event_date || !event_time || !event_location) {
+    return res.status(400).json({ error: "Thiếu thông tin sự kiện" });
+  }
+
+  const insertEventSql = `
+    INSERT INTO events (event_id, event_name, event_date, event_time, event_location, event_description, banner_url, hot_level)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(
+    insertEventSql,
+    [event_id, event_name, event_date, event_time, event_location, event_description, banner_url, hot_level || 0],
+    (err) => {
+      if (err) {
+        console.error("Lỗi khi tạo sự kiện:", err);
+        return res.status(500).json({ error: "Lỗi server khi tạo sự kiện" });
+      }
+
+      // tạo vé (tickets) sau khi tạo sự kiện
+      if (Array.isArray(tickets)) {
+        const insertTicketSql = `
+          INSERT INTO tickets (ticket_id, event_id, ticket_type, price, quantity)
+          VALUES ?
+        `;
+
+        const ticketValues = tickets.map((t) => [
+          `ticket_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`, // ticket_id random
+          event_id,
+          t.ticket_type,
+          t.price,
+          t.quantity,
+        ]);
+
+        db.query(insertTicketSql, [ticketValues], (err2) => {
+          if (err2) {
+            console.error("Lỗi khi tạo vé:", err2);
+            return res.status(500).json({ error: "Tạo sự kiện thành công nhưng lỗi tạo vé" });
+          }
+
+          return res.json({ message: "Tạo sự kiện và vé thành công" });
+        });
+      } else {
+        return res.json({ message: "Tạo sự kiện thành công (không có vé)" });
+      }
+    }
+  );
+});
+
+
+
 
 
 
