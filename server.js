@@ -2,12 +2,20 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const { v4: uuidv4 } = require('uuid'); // import UUID
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const port = 3001;
 
-app.use(cors());
+const corsOptions = {
+  origin: 'http://localhost:2999', // Địa chỉ frontend
+  methods: 'GET,POST,PUT,DELETE',
+  credentials: true, // Cho phép gửi cookie cùng với yêu cầu
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -261,7 +269,79 @@ app.post("/api/events", (req, res) => {
   });
 });
 
+// api đăng ký
+app.post('/api/register', (req, res) => {
+  const { full_name, phone, email, password, gender, dob } = req.body;
 
+  // Kiểm tra nếu thiếu thông tin
+  if (!email || !password || !full_name) {
+    return res.status(400).json({ error: "Thiếu thông tin" });
+  }
+
+  // Truy vấn cơ sở dữ liệu để thêm người dùng
+  db.query(
+    'INSERT INTO users (full_name, phone, email, password, gender, dob) VALUES (?, ?, ?, ?, ?, ?)',
+    [full_name, phone, email, password, gender, dob],
+    (err) => {
+      if (err) {
+        console.error('Lỗi đăng ký:', err);
+        return res.status(500).json({ error: "Không thể đăng ký" });
+      }
+      res.status(201).json({ message: "Đăng ký thành công" });
+    }
+  );
+});
+
+
+/// api đăng nhập
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+
+  db.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, password], (err, results) => {
+    if (err || results.length === 0) {
+      return res.status(401).json({ error: 'Email hoặc mật khẩu không đúng' });
+    }
+
+    const user = results[0];
+    const userInfo = {
+      user_id: user.user_id,
+      full_name: user.full_name,
+      email: user.email,
+      phone: user.phone,
+      dob: user.dob,
+      gender: user.gender
+    };
+
+    res.cookie('auth', JSON.stringify(userInfo), { httpOnly: true });
+    res.json({ message: 'Đăng nhập thành công', user: userInfo });
+  });
+});
+
+// API kiểm tra người dùng đã đăng nhập chưa
+app.get('/api/check-auth', (req, res) => {
+  const authCookie = req.cookies.auth;
+
+  if (!authCookie) {
+    return res.status(401).json({ error: "Chưa đăng nhập" });
+  }
+
+  try {
+    const userData = JSON.parse(authCookie);
+    res.json({ user: userData });
+  } catch (err) {
+    res.status(400).json({ error: "Lỗi cookie" });
+  }
+});
+
+// API đăng xuất
+app.post('/api/logout', (req, res) => {
+  res.clearCookie("auth", {
+    httpOnly: true,
+    secure: false, // Đặt true nếu dùng HTTPS
+    sameSite: "lax",
+  });
+  res.json({ message: "Đăng xuất thành công" });
+});
 
 
 
