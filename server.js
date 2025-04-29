@@ -1,16 +1,16 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid'); // import UUID
+const { v4: uuidv4 } = require('uuid'); 
 const cookieParser = require('cookie-parser');
 
 const app = express();
 const port = 3001;
 
 const corsOptions = {
-  origin: true, // Địa chỉ frontend
+  origin: true, 
   methods: 'GET,POST,PUT,DELETE',
-  credentials: true, // Cho phép gửi cookie cùng với yêu cầu
+  credentials: true, 
 };
 
 app.use(cors(corsOptions));
